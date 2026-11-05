@@ -14,9 +14,22 @@ const copyBtn = $("copy");
 const openBtn = $("open");
 const hintEl = $("hint");
 
-function showHint(html) {
-  hintEl.innerHTML = html;
+// Build a DOM element; children may be strings (inserted as text) or nodes.
+function h(tag, props, ...children) {
+  const el = Object.assign(document.createElement(tag), props);
+  el.append(...children);
+  return el;
+}
+
+// Hints are assembled from nodes and text, never parsed as HTML, so a server
+// error message is always shown as plain text.
+function showHint(...parts) {
+  hintEl.replaceChildren(...parts);
   hintEl.hidden = false;
+}
+
+function pagecastLink() {
+  return h("a", { href: BASE, target: "_blank", rel: "noopener" }, "Pagecast");
 }
 
 function setStatus(text) {
@@ -62,8 +75,11 @@ async function main() {
       // file:// tab but URL is hidden → "Allow access to file URLs" is off.
       setStatus("Can't read this tab.");
       showHint(
-        'If this is a local file, enable <strong>"Allow access to file URLs"</strong> for this extension on ' +
-          '<a href="#" id="exts">chrome://extensions</a>, then reopen the file.'
+        "If this is a local file, enable ",
+        h("strong", {}, '"Allow access to file URLs"'),
+        " for this extension on ",
+        h("a", { href: "#", id: "exts" }, "chrome://extensions"),
+        ", then reopen the file."
       );
       const exts = $("exts");
       if (exts) exts.onclick = (e) => { e.preventDefault(); chrome.tabs.create({ url: "chrome://extensions" }); };
@@ -86,8 +102,11 @@ async function main() {
   if (!status.up) {
     setStatus("Pagecast isn't running.");
     showHint(
-      'Start it in your terminal:<br><code>npx pagecast</code><br>' +
-        '<button class="btn" id="copycmd">Copy command</button>'
+      "Start it in your terminal:",
+      h("br"),
+      h("code", {}, "npx pagecast"),
+      h("br"),
+      h("button", { className: "btn", id: "copycmd" }, "Copy command")
     );
     const c = $("copycmd");
     if (c) c.onclick = async () => { await navigator.clipboard.writeText("npx pagecast"); c.textContent = "Copied"; };
@@ -97,7 +116,7 @@ async function main() {
   const connected = cf && cf.loggedIn && cf.projectName;
   if (!connected) {
     setStatus("Cloudflare isn't connected yet.");
-    showHint('Open <a href="' + BASE + '" target="_blank" rel="noopener">Pagecast</a> and click Connect Cloudflare, then come back.');
+    showHint("Open ", pagecastLink(), " and click Connect Cloudflare, then come back.");
     return;
   }
 
@@ -151,10 +170,10 @@ function handleError(statusCode, data) {
   publishBtn.textContent = "Publish to Pagecast";
   if (statusCode === 401) {
     setStatus("Cloudflare isn't connected.");
-    showHint('Open <a href="' + BASE + '" target="_blank" rel="noopener">Pagecast</a> to sign in, then try again.');
+    showHint("Open ", pagecastLink(), " to sign in, then try again.");
   } else if (statusCode === 409) {
     setStatus("Multiple Cloudflare accounts found.");
-    showHint('Open <a href="' + BASE + '" target="_blank" rel="noopener">Pagecast</a> and choose an account, then try again.');
+    showHint("Open ", pagecastLink(), " and choose an account, then try again.");
   } else if (statusCode === 404) {
     setStatus("File not found.");
     showHint("Is the file still on disk at this path?");
